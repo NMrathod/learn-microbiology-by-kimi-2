@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroBio Explorer - Interactive 3D Microbiology Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bacteria-color: #00bcd4;
+            --virus-color: #e91e63;
+            --fungi-color: #ff9800;
+            --protozoa-color: #9c27b0;
+            --algae-color: #4caf50;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .background-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #f5576c);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        header {
+            padding: 2rem 0;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(45deg, #00bcd4, #e91e63);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(31, 38, 135, 0.5);
+        }
+
+        .search-section {
+            margin-bottom: 3rem;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 1rem;
+            border: none;
+            border-radius: 50px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            font-size: 1rem;
+            outline: none;
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s ease;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-input:focus {
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .filter-select {
+            padding: 1rem;
+            border: none;
+            border-radius: 50px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            font-size: 1rem;
+            cursor: pointer;
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s ease;
+        }
+
+        .microorganism-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .micro-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .micro-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+
+        .micro-card:hover::before {
+            animation: shine 0.5s ease;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); opacity: 0; }
+        }
+
+        .micro-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        }
+
+        .micro-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .micro-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .micro-description {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .micro-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .btn {
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            margin: 2% auto;
+            padding: 2rem;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            border: 1px solid var(--glass-border);
+        }
+
+        .close {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .close:hover {
+            transform: rotate(90deg);
+        }
+
+        .canvas-3d {
+            width: 100%;
+            height: 300px;
+            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            margin: 1rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas-controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 25px;
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .info-section {
+            margin: 1.5rem 0;
+        }
+
+        .info-section h3 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .info-section p, .info-section ul {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .info-section ul {
+            margin-left: 1.5rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2rem;
+            }
+            
+            .microorganism-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+                padding: 1.5rem;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-animation"></div>
+    
+    <header>
+        <div class="container">
+            <h1 class="logo">🧬 MicroBio Explorer</h1>
+            <p class="tagline">Discover the microscopic world through interactive 3D visualizations</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="search-section">
+            <div class="glass-card">
+                <h2>Explore Microorganisms</h2>
+                <div class="search-container">
+                    <input type="text" class="search-input" id="searchInput" placeholder="Search microorganisms...">
+                    <select class="filter-select" id="filterSelect">
+                        <option value="all">All Types</option>
+                        <option value="bacteria">Bacteria</option>
+                        <option value="virus">Viruses</option>
+                        <option value="fungi">Fungi</option>
+                        <option value="protozoa">Protozoa</option>
+                        <option value="algae">Algae</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section class="microorganism-grid" id="microorganismGrid">
+            <!-- Microorganism cards will be dynamically populated -->
+        </section>
+    </main>
+
+    <!-- Modal for detailed view -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle"></h2>
+            <div class="canvas-3d">
+                <canvas id="canvas3d"></canvas>
+            </div>
+            <div class="canvas-controls">
+                <button class="control-btn" onclick="rotate3D('left')">↶ Rotate Left</button>
+                <button class="control-btn" onclick="rotate3D('right')">↷ Rotate Right</button>
+                <button class="control-btn" onclick="zoom3D('in')">🔍+ Zoom In</button>
+                <button class="control-btn" onclick="zoom3D('out')">🔍- Zoom Out</button>
+                <button class="control-btn" onclick="reset3DView()">⟲ Reset</button>
+            </div>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Microorganism data
+        const microorganisms = {
+            bacteria: {
+                name: "Bacteria",
+                icon: "🦠",
+                description: "Single-celled prokaryotic organisms found in all environments",
+                structures: 8,
+                examples: 12,
+                color: "#00bcd4",
+                details: {
+                    description: "Bacteria are single-celled microorganisms that lack a nucleus and other membrane-bound organelles. They are among the most abundant organisms on Earth and can be found in virtually every environment.",
+                    structure: "Bacterial cell structure includes: cell wall (peptidoglycan), plasma membrane, cytoplasm, ribosomes, nucleoid region (DNA), and often flagella for movement.",
+                    function: "Essential roles in nutrient cycling, decomposition, nitrogen fixation, and as symbionts in digestive systems. Some are pathogenic to humans.",
+                    characteristics: ["Prokaryotic cells", "Reproduce by binary fission", "Can form spores", "Diverse metabolic capabilities", "Antibiotic resistance possible"],
+                    examples: ["Escherichia coli", "Staphylococcus aureus", "Streptococcus pneumoniae", "Lactobacillus acidophilus", "Cyanobacteria"]
+                }
+            },
+            virus: {
+                name: "Viruses",
+                icon: "🦠",
+                description: "Non-cellular infectious agents that require host cells",
+                structures: 5,
+                examples: 8,
+                color: "#e91e63",
+                details: {
+                    description: "Viruses are microscopic infectious agents that can only replicate inside living host cells. They consist of genetic material (DNA or RNA) enclosed in a protein coat.",
+                    structure: "Basic viral structure includes: genetic material (DNA/RNA), protein capsid, and sometimes an outer lipid envelope with glycoprotein spikes.",
+                    function: "Infect host cells, hijack cellular machinery for reproduction, can cause disease or provide immunity through vaccination.",
+                    characteristics: ["Obligate intracellular parasites", "No cellular structure", "Can't reproduce independently", "Specific host range", "Can mutate rapidly"],
+                    examples: ["Influenza virus", "HIV", "SARS-CoV-2", "Adenovirus", "Bacteriophage T4"]
+                }
+            },
+            fungi: {
+                name: "Fungi",
+                icon: "🍄",
+                description: "Eukaryotic organisms including yeasts, molds, and mushrooms",
+                structures: 7,
+                examples: 10,
+                color: "#ff9800",
+                details: {
+                    description: "Fungi are eukaryotic organisms that include microorganisms like yeasts and molds, as well as macroscopic mushrooms. They play crucial roles in decomposition and nutrient cycling.",
+                    structure: "Fungal structure includes: cell wall (chitin), cell membrane, nucleus, mitochondria, endoplasmic reticulum, and specialized reproductive structures.",
+                    function: "Decompose organic matter, form symbiotic relationships (mycorrhizae), produce antibiotics, used in food production and biotechnology.",
+                    characteristics: ["Eukaryotic cells", "Cell walls contain chitin", "Can be unicellular or multicellular", "Reproduce via spores", "Heterotrophic nutrition"],
+                    examples: ["Saccharomyces cerevisiae", "Penicillium chrysogenum", "Aspergillus niger", "Candida albicans", "Amanita muscaria"]
+                }
+            },
+            protozoa: {
+                name: "Protozoa",
+                icon: "🦠",
+                description: "Single-celled eukaryotic organisms that often exhibit motility",
+                structures: 9,
+                examples: 7,
+                color: "#9c27b0",
+                details: {
+                    description: "Protozoa are single-celled eukaryotic organisms that are often motile and heterotrophic. They are found in diverse aquatic and terrestrial environments.",
+                    structure: "Protozoan structure includes: plasma membrane, nucleus, mitochondria, endoplasmic reticulum, Golgi apparatus, food vacuoles, and specialized locomotor structures.",
+                    function: "Important roles in food webs, decomposition, and nutrient cycling. Some are parasites causing diseases like malaria and amoebic dysentery.",
+                    characteristics: ["Eukaryotic cells", "Usually motile", "Heterotrophic nutrition", "Can form cysts", "Complex life cycles possible"],
+                    examples: ["Plasmodium falciparum", "Amoeba proteus", "Paramecium caudatum", "Trypanosoma brucei", "Giardia lamblia"]
+                }
+            },
+            algae: {
+                name: "Algae",
+                icon: "🌿",
+                description: "Photosynthetic eukaryotic organisms ranging from unicellular to multicellular",
+                structures: 6,
+                examples: 9,
+                color: "#4caf50",
+                details: {
+                    description: "Algae are photosynthetic eukaryotic organisms that range from single-celled microalgae to large seaweeds. They are primary producers in aquatic ecosystems.",
+                    structure: "Algal structure includes: cell wall (cellulose), plasma membrane, chloroplasts with chlorophyll, nucleus, pyrenoids, and flagella in motile forms.",
+                    function: "Primary producers in aquatic ecosystems, produce oxygen, form base of food webs, used in biofuels, food, and pharmaceutical industries.",
+                    characteristics: ["Photosynthetic", "Eukaryotic cells", "Aquatic habitat", "Chlorophyll a present", "Can be unicellular or multicellular"],
+                    examples: ["Chlamydomonas", "Spirulina", "Diatoms", "Kelp", "Chlorella vulgaris"]
+                }
+            }
+        };
+
+        let currentMicroorganism = null;
+        let currentRotation = 0;
+        let currentZoom = 1;
+        let animationId = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            renderMicroorganisms();
+            setupEventListeners();
+        });
+
+        function renderMicroorganisms(filter = 'all', searchTerm = '') {
+            const grid = document.getElementById('microorganismGrid');
+            grid.innerHTML = '';
+
+            Object.entries(microorganisms).forEach(([key, micro]) => {
+                if (filter !== 'all' && key !== filter) return;
+                if (searchTerm && !micro.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
+                    !micro.description.toLowerCase().includes(searchTerm.toLowerCase())) return;
+
+                const card = createMicroCard(key, micro);
+                grid.appendChild(card);
+            });
+        }
+
+        function createMicroCard(key, micro) {
+            const card = document.createElement('div');
+            card.className = 'micro-card';
+            card.style.setProperty('--accent-color', micro.color);
+            card.innerHTML = `
+                <span class="micro-icon" style="color: ${micro.color}">${micro.icon}</span>
+                <h3 class="micro-name">${micro.name}</h3>
+                <p class="micro-description">${micro.description}</p>
+                <div class="micro-stats">
+                    <div class="stat">
+                        <span class="stat-number">${micro.structures}</span>
+                        <span class="stat-label">Structures</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">${micro.examples}</span>
+                        <span class="stat-label">Examples</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="openModal('${key}')">Learn More & View 3D</button>
+            `;
+            return card;
+        }
+
+        function setupEventListeners() {
+            const searchInput = document.getElementById('searchInput');
+            const filterSelect = document.getElementById('filterSelect');
+            const modal = document.getElementById('detailModal');
+            const closeBtn = document.querySelector('.close');
+
+            searchInput.addEventListener('input', (e) => {
+                renderMicroorganisms(filterSelect.value, e.target.value);
+            });
+
+            filterSelect.addEventListener('change', (e) => {
+                renderMicroorganisms(e.target.value, searchInput.value);
+            });
+
+            closeBtn.addEventListener('click', closeModal);
+            window.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+        }
+
+        function openModal(microKey) {
+            currentMicroorganism = microorganisms[microKey];
+            const modal = document.getElementById('detailModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+
+            modalTitle.textContent = currentMicroorganism.name;
+            modalContent.innerHTML = `
+                <div class="info-section">
+                    <h3>Description</h3>
+                    <p>${currentMicroorganism.details.description}</p>
+                </div>
+                <div class="info-section">
+                    <h3>Structure Details</h3>
+                    <p>${currentMicroorganism.details.structure}</p>
+                </div>
+                <div class="info-section">
+                    <h3>Functions in Ecosystem</h3>
+                    <p>${currentMicroorganism.details.function}</p>
+                </div>
+                <div class="info-section">
+                    <h3>Key Characteristics</h3>
+                    <ul>
+                        ${currentMicroorganism.details.characteristics.map(char => `<li>${char}</li>`).join('')}
+                    </ul>
+                </div>
+                <div class="info-section">
+                    <h3>Real-world Examples</h3>
+                    <ul>
+                        ${currentMicroorganism.details.examples.map(ex => `<li>${ex}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+
+            modal.style.display = 'block';
+            init3DVisualization();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('detailModal');
+            modal.style.display = 'none';
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        }
+
+        function init3DVisualization() {
+            const canvas = document.getElementById('canvas3d');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            const container = canvas.parentElement;
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+
+            currentRotation = 0;
+            currentZoom = 1;
+            animate3D();
+        }
+
+        function animate3D() {
+            const canvas = document.getElementById('canvas3d');
+            const ctx = canvas.getContext('2d');
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(canvas.width, canvas.height) * 0.2 * currentZoom;
+            
+            // Draw microorganism based on type
+            drawMicroorganism(ctx, centerX, centerY, radius, currentMicroorganism.name.toLowerCase());
+            
+            animationId = requestAnimationFrame(animate3D);
+        }
+
+        function drawMicroorganism(ctx, x, y, radius, type) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(currentRotation);
+            
+            switch(type) {
+                case 'bacteria':
+                    drawBacteria(ctx, radius);
+                    break;
+                case 'viruses':
+                    drawVirus(ctx, radius);
+                    break;
+                case 'fungi':
+                    drawFungi(ctx, radius);
+                    break;
+                case 'protozoa':
+                    drawProtozoa(ctx, radius);
+                    break;
+                case 'algae':
+                    drawAlgae(ctx, radius);
+                    break;
+            }
+            
+            ctx.restore();
+        }
+
+        function drawBacteria(ctx, radius) {
+            // Rod-shaped bacteria
+            ctx.fillStyle = '#00bcd4';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, radius * 2, radius, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Flagella
+            ctx.strokeStyle = '#00bcd4';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 3; i++) {
+                const angle = (i * Math.PI * 2) / 3;
+                ctx.beginPath();
+                ctx.moveTo(radius * 2 * Math.cos(angle), radius * Math.sin(angle));
+                ctx.quadraticCurveTo(
+                    radius * 3 * Math.cos(angle), radius * 2 * Math.sin(angle),
+                    radius * 4 * Math.cos(angle), radius * 1.5 * Math.sin(angle)
+                );
+                ctx.stroke();
+            }
+        }
+
+        function drawVirus(ctx, radius) {
+            // Icosahedral virus
+            ctx.fillStyle = '#e91e63';
+            ctx.beginPath();
+            for (let i = 0; i < 20; i++) {
+                const angle = (i * Math.PI * 2) / 20;
+                const x = radius * Math.cos(angle);
+                const y = radius * Math.sin(angle);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // Spikes
+            ctx.strokeStyle = '#e91e63';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 12; i++) {
+                const angle = (i * Math.PI * 2) / 12;
+                const x1 = radius * Math.cos(angle);
+                const y1 = radius * Math.sin(angle);
+                const x2 = radius * 1.5 * Math.cos(angle);
+                const y2 = radius * 1.5 * Math.sin(angle);
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+        }
+
+        function drawFungi(ctx, radius) {
+            // Fungal spore with hyphae
+            ctx.fillStyle = '#ff9800';
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hyphae
+            ctx.strokeStyle = '#ff9800';
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 4; i++) {
+                const angle = (i * Math.PI) / 2;
+                ctx.beginPath();
+                ctx.moveTo(radius * Math.cos(angle), radius * Math.sin(angle));
+                ctx.quadraticCurveTo(
+                    radius * 2 * Math.cos(angle + 0.3), radius * 2 * Math.sin(angle + 0.3),
+                    radius * 3 * Math.cos(angle), radius * 3 * Math.sin(angle)
+                );
+                ctx.stroke();
+            }
+        }
+
+        function drawProtozoa(ctx, radius) {
+            // Amoeba-like shape
+            ctx.fillStyle = '#9c27b0';
+            const points = 8;
+            const variation = 0.3;
+            
+            ctx.beginPath();
+            for (let i = 0; i <= points; i++) {
+                const angle = (i * Math.PI * 2) / points;
+                const r = radius * (1 + variation * Math.sin(angle * 3 + Date.now() * 0.001));
+                const x = r * Math.cos(angle);
+                const y = r * Math.sin(angle);
+                
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // Pseudopodia
+            ctx.strokeStyle = '#9c27b0';
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.7;
+            for (let i = 0; i < 3; i++) {
+                const angle = (i * Math.PI * 2) / 3 + Date.now() * 0.0005;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(
+                    radius * Math.cos(angle + 0.5), radius * Math.sin(angle + 0.5),
+                    radius * 1.5 * Math.cos(angle), radius * 1.5 * Math.sin(angle)
+                );
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function drawAlgae(ctx, radius) {
+            // Algae cell with chloroplasts
+            ctx.fillStyle = '#4caf50';
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Chloroplasts
+            ctx.fillStyle = '#2e7d32';
+            for (let i = 0; i < 4; i++) {
+                const angle = (i * Math.PI) / 2;
+                const x = radius * 0.5 * Math.cos(angle);
+                const y = radius * 0.5 * Math.sin(angle);
+                ctx.beginPath();
+                ctx.arc(x, y, radius * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Flagella
+            ctx.strokeStyle = '#4caf50';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, -radius);
+            ctx.quadraticCurveTo(-10, -radius * 1.5, -5, -radius * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, -radius);
+            ctx.quadraticCurveTo(10, -radius * 1.5, 5, -radius * 2);
+            ctx.stroke();
+        }
+
+        function rotate3D(direction) {
+            const step = direction === 'left' ? -0.1 : 0.1;
+            currentRotation += step;
+        }
+
+        function zoom3D(direction) {
+            const step = direction === 'in' ? 0.1 : -0.1;
+            currentZoom = Math.max(0.5, Math.min(2, currentZoom + step));
+        }
+
+        function reset3DView() {
+            currentRotation = 0;
+            currentZoom = 1;
+        }
+
+        // Responsive canvas resize
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas3d');
+            if (canvas && canvas.offsetParent !== null) {
+                const container = canvas.parentElement;
+                canvas.width = container.offsetWidth;
+                canvas.height = container.offsetHeight;
+            }
+        });
+    </script>
+</body>
+</html>
